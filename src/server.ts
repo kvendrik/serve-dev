@@ -1,175 +1,167 @@
-#!/usr/bin/env node
-
-const currentDirectoryPath = process.cwd();
-process.chdir(currentDirectoryPath);
-
-import Koa from 'koa';
+import Koa, {Context as KoaContext, Next as KoaNext} from 'koa';
 import {join, relative, resolve} from 'path';
 import Router from 'koa-router';
 import koaSend from 'koa-send';
-import watch from 'node-watch';
+import {default as nodeWatch} from 'node-watch';
 import websockify from 'koa-websocket';
+import * as ws from 'ws';
 import chalk from 'chalk';
 import {readFileSync, existsSync} from 'fs';
 import opn from 'opn';
 
-interface Action {
-  test(filePath: string): void;
-  action(): void;
-}
+interface OnChangeResult {
+  refreshPage: boolean;
+};
 
 interface Settings {
   root: string;
   port: number;
-  actions?: Action[];
+  watch?: {
+    paths: string[];
+    onChange(filePath: string): OnChangeResult;
+  };
   onStart?(): void;
-  liveReload?: boolean;
-  watchFiles?: boolean;
   openPageOnStart?: boolean;
-  watchTest?(path: string): boolean;
 }
 
-const settingsPath = join(currentDirectoryPath, '.dev-serve.js');
+export class DevServer {
+  private getUniqueSocketId = createUniqueIdFactory('socket');
+  private currentWebsockets: {
+   id: string;
+   socket: ws;
+  }[] = [];
 
-let Settings: Settings = {
-  root: resolve('static'),
-  port: 8080,
-  onStart: undefined,
-  actions: [],
-  liveReload: true,
-  watchFiles: true,
-  openPageOnStart: true,
-  watchTest: (path: string) => !path.includes('/wasm/'),
-};
+  constructor(private settings: Settings){}
 
-if (existsSync(settingsPath)) {
-  const userSettings = require(settingsPath);
-  Settings = {...Settings, ...userSettings};
-}
+  start() {
+    const {
+      root,
+      port,
+      watch,
+      onStart,
+      openPageOnStart
+    } = this.settings;
 
-const port = process.env.PORT || Settings.port;
-const app = websockify(new Koa());
-const router = new Router();
-const getUniqueSocketId = createUniqueIdFactory('socket');
-let currentWebsockets = [];
+    const app = websockify(new Koa());
+    const router = new Router();
 
-router.get('/(.*)', handleHttpRequest);
+    router.get('/(.*)', this.handleHttpRequest);
 
-app
-  .use(router.routes())
-  .use(router.allowedMethods());
+    app
+      .use(router.routes())
+      .use(router.allowedMethods());
 
-if (Settings.liveReload) {
-  app.ws.use(handleNewWsConnection);
-}
+    app.ws.use(this.handleNewWsConnection);
 
-if (Settings.onStart) {
-  Settings.onStart();
-}
+    if (onStart) onStart();
 
-if (Settings.watchFiles) {
-  logInfo('Setting up file watcher...');
-  watch(
-    [Settings.root, ...Settings.actions?.map(({filePath}) => filePath)],
-    {
-      recursive: true,
-      filter: Settings.watchTest,
-    },
-    handleFileChange
-  );
-}
+    if (watch) {
+      logInfo('Setting up file watcher...');
+      nodeWatch(
+        watch.paths,
+        {
+          recursive: true,
+        },
+        this.handleFileChange
+      );
+    }
 
-if(Settings.openPageOnStart) opn(`http://localhost:${port}`);
+    if(openPageOnStart) opn(`http://localhost:${port}`);
 
-app.listen(port);
-logSuccess(`Serving ${Settings.root} on *:${port}`);
-
-function handleFileChange(_, filePath) {
-  const infoMessage = `${filePath} changed. Running actions...`;
-  logInfo(infoMessage);
-
-  for (const {socket} of currentWebsockets) {
-    socket.send(
-      JSON.stringify({action: 'log', data: infoMessage})
-    );
+    app.listen(port);
+    logSuccess(`Serving ${root} on *:${port}`);
   }
 
-  for (const [path, action] of Object.entries(Settings.actions)) {
-    if (filePath.includes(path)) {
-      action(chalk);
+  private async handleFileChange(_: string, filePath: string) {
+    const {watch} = this.settings;
+
+    const infoMessage = `${filePath} changed. Running actions...`;
+    logInfo(infoMessage);
+
+    for (const {socket} of this.currentWebsockets) {
+      socket.send(
+        JSON.stringify({action: 'log', data: infoMessage})
+      );
+    }
+
+    if (!watch) {
+      return;
+    }
+
+    const {refreshPage} = await watch.onChange(filePath);
+
+    if (!refreshPage) {
+      return;
+    }
+
+    for (const {socket} of this.currentWebsockets) {
+      socket.send(
+        JSON.stringify({action: 'doReload', data: null})
+      );
     }
   }
 
-  for (const {socket} of currentWebsockets) {
-    socket.send(
-      JSON.stringify({action: 'doReload', data: null})
-    );
-  }
-}
+  private handleNewWsConnection(ctx: KoaContext, next: KoaNext) {
+    logInfo('Client connected');
 
-function handleNewWsConnection(ctx, next) {
-  logInfo('Client connected');
+    const socket = ctx.websocket;
+    const socketId = this.getUniqueSocketId();
 
-  const socket = ctx.websocket;
-  const socketId = getUniqueSocketId();
+    this.currentWebsockets.push({id: socketId, socket});
 
-  currentWebsockets.push({id: socketId, socket});
+    socket.on('close', () => {
+      logInfo(`Closing socket ${socketId}`);
+      this.currentWebsockets = this.currentWebsockets.filter(({id}) => id !== socketId);
+    });
 
-  socket.on('close', () => {
-    logInfo(`Closing socket ${socketId}`);
-    currentWebsockets = currentWebsockets.filter(({id}) => id !== socketId);
-  });
-
-  return next(ctx);
-}
-
-async function handleHttpRequest(ctx, next) {
-  const path = ctx.path;
-
-  if (path === '/') {
-    const indexPath = join(Settings.root, 'index.html');
-    respondWithHtml(indexPath, Settings.liveReload);
-    return next(ctx);
+    return next();
   }
 
-  const requestingHtml = path.includes('.html');
-  const requestedFilePath = join(Settings.root, path);
+  private async handleHttpRequest(ctx: KoaContext, next: KoaNext) {
+    const path = ctx.path;
+    const {root, port} = this.settings;
 
-  if (requestingHtml) {
-    respondWithHtml(requestedFilePath, Settings.liveReload);
-    return next(ctx);
-  }
+    if (path === '/') {
+      const indexPath = join(root, 'index.html');
+      respondWithHtml(indexPath);
+      return next();
+    }
 
-  await koaSend(ctx, relative(currentDirectoryPath, requestedFilePath));
-  return next(ctx);
+    const requestingHtml = path.includes('.html');
+    const requestedFilePath = join(root, path);
 
-  function respondWithHtml(filePath, insertLiveReloadScript) {
-    const html = readFileSync(filePath, 'utf-8');
-    const finalHtml = insertLiveReloadScript ? insertLiveReloadScriptIntoHtml(html) : html;
-    ctx.type = 'html';
-    ctx.body = finalHtml;
-  }
-}
+    if (requestingHtml) {
+      respondWithHtml(requestedFilePath);
+      return next();
+    }
 
-function insertLiveReloadScriptIntoHtml(html) {
-  return html.replace('</body>', `<script>
+    await koaSend(ctx, relative(process.cwd(), requestedFilePath));
+    return next();
+
+    function respondWithHtml(filePath: string) {
+      const html = readFileSync(filePath, 'utf-8');
+      const finalHtml = html.replace('</body>', `<script>
 const webSocket = new WebSocket('ws://localhost:${port}');
 webSocket.addEventListener('message', ({data}) => {
   const {action, data: actionData} = JSON.parse(data);
   if (action === 'doReload') location.reload();
   if (action === 'log') console.log(actionData);
 });</script></body>`);
+      ctx.type = 'html';
+      ctx.body = finalHtml;
+    };
+  }
 }
 
-function logSuccess(message) {
+function logSuccess(message: string) {
   console.log(chalk.green(message));
 }
 
-function logInfo(message) {
+function logInfo(message: string) {
   console.info(chalk.blue(message));
 }
 
-function createUniqueIdFactory(prefix) {
+function createUniqueIdFactory(prefix: string) {
   let index = 0;
   return () => `${prefix}-${index++}`;
 }
