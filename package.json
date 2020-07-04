@@ -1,0 +1,32 @@
+{
+  "name": "dev-serve",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "ts-node src/server.ts"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.11.3",
+    "@types/koa-router": "^7.4.1",
+    "@types/koa-send": "^4.1.2",
+    "@types/koa-websocket": "^5.0.4",
+    "@types/node": "^14.0.14",
+    "@types/opn": "^5.5.0",
+    "chalk": "^4.1.0",
+    "koa": "^2.13.0",
+    "koa-router": "^9.1.0",
+    "koa-send": "^5.0.0",
+    "koa-static": "^5.0.0",
+    "koa-websocket": "^6.0.0",
+    "node-watch": "^0.6.4",
+    "opn": "^6.0.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.6"
+  },
+  "author": "Koen Vendrik <k.vendrik@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">13"
+  }
+}
