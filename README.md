@@ -36,4 +36,4 @@ Check out [`example/server.mjs`](https://github.com/kvendrik/serve-dev/blob/mast
 
 ## Contribute
 
-Make your change and run `yarn example` to test them using the example setup.
+Make your changes and run `yarn example` to test them using the example setup.
