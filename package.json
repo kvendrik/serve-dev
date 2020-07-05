@@ -1,6 +1,6 @@
 {
   "name": "serve-dev",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "A very simple but highly customizable server for local web development",
   "main": "build/index.mjs",
   "scripts": {
