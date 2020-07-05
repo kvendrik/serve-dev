@@ -6,11 +6,11 @@ import {default as nodeWatch} from 'node-watch';
 import websockify from 'koa-websocket';
 import * as ws from 'ws';
 import chalk from 'chalk';
-import {readFileSync, existsSync} from 'fs';
-import opn from 'opn';
+import {readFileSync, lstatSync, existsSync} from 'fs';
+import open from 'open';
 
 interface OnChangeResult {
-  refreshPage: boolean;
+  shouldReloadPage: boolean;
 };
 
 interface Settings {
@@ -24,7 +24,7 @@ interface Settings {
   openPageOnStart?: boolean;
 }
 
-export class DevServer {
+export default class DevServer {
   private getUniqueSocketId = createUniqueIdFactory('socket');
   private currentWebsockets: {
    id: string;
@@ -43,15 +43,15 @@ export class DevServer {
     } = this.settings;
 
     const app = websockify(new Koa());
-    const router = new Router();
+    const router = new Router<any, KoaContext>();
 
-    router.get('/(.*)', this.handleHttpRequest);
+    router.get('/(.*)', this.handleHttpRequest.bind(this));
 
     app
       .use(router.routes())
       .use(router.allowedMethods());
 
-    app.ws.use(this.handleNewWsConnection);
+    app.ws.use(this.handleNewWsConnection.bind(this));
 
     if (onStart) onStart();
 
@@ -62,11 +62,11 @@ export class DevServer {
         {
           recursive: true,
         },
-        this.handleFileChange
+        this.handleFileChange.bind(this)
       );
     }
 
-    if(openPageOnStart) opn(`http://localhost:${port}`);
+    if(openPageOnStart) open(`http://localhost:${port}`);
 
     app.listen(port);
     logSuccess(`Serving ${root} on *:${port}`);
@@ -75,7 +75,7 @@ export class DevServer {
   private async handleFileChange(_: string, filePath: string) {
     const {watch} = this.settings;
 
-    const infoMessage = `${filePath} changed. Running actions...`;
+    const infoMessage = `${filePath} changed.`;
     logInfo(infoMessage);
 
     for (const {socket} of this.currentWebsockets) {
@@ -88,9 +88,9 @@ export class DevServer {
       return;
     }
 
-    const {refreshPage} = await watch.onChange(filePath);
+    const {shouldReloadPage} = await watch.onChange(filePath);
 
-    if (!refreshPage) {
+    if (!shouldReloadPage) {
       return;
     }
 
@@ -102,15 +102,15 @@ export class DevServer {
   }
 
   private handleNewWsConnection(ctx: KoaContext, next: KoaNext) {
-    logInfo('Client connected');
-
     const socket = ctx.websocket;
     const socketId = this.getUniqueSocketId();
+
+    logInfo(`Client connected. Socket ID ${socketId}`);
 
     this.currentWebsockets.push({id: socketId, socket});
 
     socket.on('close', () => {
-      logInfo(`Closing socket ${socketId}`);
+      logInfo(`Closing client connection. Socket ID ${socketId}`);
       this.currentWebsockets = this.currentWebsockets.filter(({id}) => id !== socketId);
     });
 
@@ -120,15 +120,25 @@ export class DevServer {
   private async handleHttpRequest(ctx: KoaContext, next: KoaNext) {
     const path = ctx.path;
     const {root, port} = this.settings;
+    const requestedFilePath = join(root, path);
 
-    if (path === '/') {
-      const indexPath = join(root, 'index.html');
+    logInfo(`GET ${path}. File path ${requestedFilePath}`);
+
+    if (!existsSync(requestedFilePath)) {
+      ctx.status = 400;
+      ctx.body = 'Not found';
+      return next();
+    }
+
+    const stat = lstatSync(requestedFilePath);
+
+    if (stat.isDirectory()) {
+      const indexPath = join(requestedFilePath, 'index.html');
       respondWithHtml(indexPath);
       return next();
     }
 
     const requestingHtml = path.includes('.html');
-    const requestedFilePath = join(root, path);
 
     if (requestingHtml) {
       respondWithHtml(requestedFilePath);
