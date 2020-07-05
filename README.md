@@ -14,7 +14,7 @@ yarn add --dev serve-dev
 ```
 
 ```tsx
-// server.mjs
+// server.mjs - Simple example that serves and watches a folder at path ./public
 // node server.mjs (Node v13+)
 
 import DevServer from 'serve-dev';
@@ -23,7 +23,7 @@ new DevServer({
   root: 'public',
   port: 9000,
   watch: {
-    paths: ['src'],
+    paths: ['public'],
     onChange(filePath) {
       console.log(`${filePath} changed.`);
       return {shouldReloadPage: true};
