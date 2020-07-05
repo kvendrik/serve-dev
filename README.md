@@ -7,6 +7,8 @@
 - 🏃‍♂️ Quick to set up
 - 💪 Unopinionated about how source files get compiled
 
+## Setup
+
 ```bash
 yarn add --dev serve-dev
 ```
@@ -31,3 +33,7 @@ new DevServer({
 ```
 
 Check out [`example/server.mjs`](https://github.com/kvendrik/serve-dev/blob/master/example/server.mjs) for a more advanced example.
+
+## Contribute
+
+Make your change and run `yarn example` to test them using the example setup.
