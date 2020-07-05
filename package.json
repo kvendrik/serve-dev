@@ -1,11 +1,11 @@
 {
   "name": "serve-dev",
-  "version": "1.0.0-alpha.1",
-  "description": "A very simple server for local web development",
-  "main": "build/index.js",
+  "version": "1.0.0-alpha.2",
+  "description": "A very simple but highly customizable server for local web development",
+  "main": "build/index.mjs",
   "scripts": {
-    "example": "node example/server.ts",
-    "build": "rm -rf build && tsc"
+    "example": "yarn build && cd example && rm -rf node_modules && yarn && yarn dev",
+    "build": "rm -rf build && tsc && sh scripts/js-to-mjs.sh"
   },
   "dependencies": {
     "chalk": "^4.1.0",

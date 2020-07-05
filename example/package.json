@@ -1,0 +1,14 @@
+{
+  "name": "serve-dev-example",
+  "scripts": {
+    "dev": "node ./server.mjs"
+  },
+  "devDependencies": {
+    "serve-dev": "file:.."
+  },
+  "author": "Koen Vendrik <k.vendrik@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">13"
+  }
+}

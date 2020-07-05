@@ -1,1 +1,3 @@
 public/*[.html, .js]
+*.log
+*.lock

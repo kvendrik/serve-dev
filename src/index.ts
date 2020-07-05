@@ -1,1 +1,2 @@
-export {default} from './dev-server';
+import DevServer from './dev-server';
+export default DevServer;
