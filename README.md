@@ -22,7 +22,10 @@ new DevServer({
   port: 9000,
   watch: {
     paths: ['src'],
-    onChange: (filePath) => console.log(`${filePath} changed.`),
+    onChange(filePath) {
+      console.log(`${filePath} changed.`);
+      return {shouldReloadPage: true};
+    }
   },
 }).start()
 ```
