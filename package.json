@@ -5,7 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "example": "node example/server.ts",
-    "build": "tsc"
+    "build": "rm -rf build && tsc"
   },
   "dependencies": {
     "chalk": "^4.1.0",
