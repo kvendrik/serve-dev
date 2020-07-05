@@ -32,5 +32,6 @@
   "license": "MIT",
   "engines": {
     "node": ">13"
-  }
+  },
+  "files": ["build"]
 }
