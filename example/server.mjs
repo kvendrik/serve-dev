@@ -5,29 +5,29 @@ const server = new DevServer({
   root: 'public',
   port: 9000,
   watch: {
-    paths: ['src'],
+    paths: ['src', 'public/index.html'],
     onChange(filePath) {
       if (filePath.includes('.js')) {
         buildJs();
       } else {
-        buildHtml();
+        buildCss();
       }
       return {shouldReloadPage: true};
     }
   },
   onStart() {
     console.log('Building source...');
-    buildHtml();
     buildJs();
+    buildCss();
   },
   openPageOnStart: true,
 });
 
 server.start();
 
-function buildHtml() {
-  const src = `<!-- Generated file -->\n${readFileSync('src/index.html', 'utf-8')}`;
-  writeFileSync('public/index.html', src);
+function buildCss() {
+  const src = `/* Generated file */\n${readFileSync('src/app.css', 'utf-8')}`;
+  writeFileSync('public/app.css', src);
 }
 
 function buildJs() {
