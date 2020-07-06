@@ -10,7 +10,8 @@ import {readFileSync, lstatSync, existsSync} from 'fs';
 import open from 'open';
 
 interface OnChangeResult {
-  shouldReloadPage: boolean;
+  replaceModule?: string;
+  doReload?: boolean;
 };
 
 interface Settings {
@@ -25,6 +26,7 @@ interface Settings {
 }
 
 export default class DevServer {
+  private uniqueServerKey = Math.round(Math.random());
   private getUniqueSocketId = createUniqueIdFactory('socket');
   private currentWebsockets: {
    id: string;
@@ -46,6 +48,7 @@ export default class DevServer {
     const router = new Router<any, KoaContext>();
 
     router.get('/(.*)', this.handleHttpRequest.bind(this));
+    router.get('/dev/:assetName', this.handleDevAssetRequest.bind(this));
 
     app
       .use(router.routes())
@@ -73,14 +76,19 @@ export default class DevServer {
   }
 
   private async handleFileChange(_: string, filePath: string) {
-    const {watch} = this.settings;
+    const {root, watch} = this.settings;
 
     const infoMessage = `${filePath} changed.`;
     logInfo(infoMessage);
 
     for (const {socket} of this.currentWebsockets) {
       socket.send(
-        JSON.stringify({action: 'log', data: infoMessage})
+        JSON.stringify({
+          action: 'log',
+          data: {
+            message: infoMessage,
+          },
+        })
       );
     }
 
@@ -88,15 +96,21 @@ export default class DevServer {
       return;
     }
 
-    const {shouldReloadPage} = await watch.onChange(filePath);
+    const {replaceModule, doReload} = await watch.onChange(filePath);
 
-    if (!shouldReloadPage) {
+    if (!replaceModule && !doReload) {
       return;
     }
 
     for (const {socket} of this.currentWebsockets) {
       socket.send(
-        JSON.stringify({action: 'doReload', data: null})
+        JSON.stringify({
+          action: 'fileChange',
+          data: {
+            replaceModule,
+            doReload,
+          },
+        })
       );
     }
   }
@@ -117,9 +131,17 @@ export default class DevServer {
     return next();
   }
 
+  private async handleDevAssetRequest(ctx: KoaContext, next: KoaNext) {
+    const assetName = ctx.params.assetName;
+    const clientJsPath = resolve(import.meta.url.replace('file://', ''), '../../client-js');
+    await koaSend(ctx, assetName, {root: clientJsPath});
+    ctx.status = 200;
+    return next();
+  }
+
   private async handleHttpRequest(ctx: KoaContext, next: KoaNext) {
     const path = ctx.path;
-    const {root, port} = this.settings;
+    const {root} = this.settings;
     const requestedFilePath = join(root, path);
 
     logInfo(`GET ${path}. File path ${requestedFilePath}`);
@@ -134,33 +156,30 @@ export default class DevServer {
 
     if (stat.isDirectory()) {
       const indexPath = join(requestedFilePath, 'index.html');
-      respondWithHtml(indexPath);
+      this.respondWithHtml(ctx, indexPath);
       return next();
     }
 
     const requestingHtml = path.includes('.html');
 
     if (requestingHtml) {
-      respondWithHtml(requestedFilePath);
+      this.respondWithHtml(ctx, requestedFilePath);
       return next();
     }
 
     await koaSend(ctx, relative(process.cwd(), requestedFilePath));
     return next();
-
-    function respondWithHtml(filePath: string) {
-      const html = readFileSync(filePath, 'utf-8');
-      const finalHtml = html.replace('</body>', `<script>
-const webSocket = new WebSocket('ws://localhost:${port}');
-webSocket.addEventListener('message', ({data}) => {
-  const {action, data: actionData} = JSON.parse(data);
-  if (action === 'doReload') location.reload();
-  if (action === 'log') console.log(actionData);
-});</script></body>`);
-      ctx.type = 'html';
-      ctx.body = finalHtml;
-    };
   }
+
+  private respondWithHtml(ctx: KoaContext, filePath: string) {
+    const {port} = this.settings;
+    const html = readFileSync(filePath, 'utf-8');
+    const finalHtml = html
+      .replace('<head>', `<head><script src="/dev/hmr.js?${this.uniqueServerKey}"></script>`)
+      .replace('</body>', `<script src="/dev/receiver.js?${this.uniqueServerKey}" data-ws-port="${port}"></script></body>`);
+    ctx.type = 'html';
+    ctx.body = finalHtml;
+  };
 }
 
 function logSuccess(message: string) {

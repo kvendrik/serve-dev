@@ -9,10 +9,11 @@ const server = new DevServer({
     onChange(filePath) {
       if (filePath.includes('.js')) {
         buildJs();
+        return {replaceModule: 'app.js'};
       } else {
         buildCss();
+        return {replaceModule: 'app.css'};
       }
-      return {shouldReloadPage: true};
     }
   },
   onStart() {

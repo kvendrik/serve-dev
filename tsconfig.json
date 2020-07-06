@@ -10,7 +10,7 @@
     "emitDecoratorMetadata": true,
     "target": "esnext",
     "module": "esnext",
-    "lib": ["es7", "dom"],
+    "lib": ["es7", "dom", "DOM.Iterable"],
     "moduleResolution": "node",
     "rootDir": "src",
     "baseUrl": ".",
