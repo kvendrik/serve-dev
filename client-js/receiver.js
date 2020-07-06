@@ -3,9 +3,9 @@ new WebSocket(`ws://localhost:${document.querySelector('[data-ws-port]').dataset
   const {action, data: actionData} = JSON.parse(data);
 
   if (action === 'fileChange') {
-    const {replaceModule, doReload} = actionData;
+    const {replaceModule, refreshPage} = actionData;
 
-    if (doReload) {
+    if (refreshPage) {
       location.reload();
       return;
     }

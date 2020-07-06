@@ -23,14 +23,21 @@ class HotModuleReplacement {
     }
 
     if (isJs) {
-      const script = [...document.scripts].find(({src}) => src.includes(path));
+      const script = [...document.querySelectorAll('script')]
+        .find(({src}) => src.includes(path));
 
       if (!script) {
         return false;
       }
 
-      script.setAttribute('src', this.updateCacheKey(script.src));
-      if (this.#listeners[path]) this.#listeners[path]();
+      const parentNode = script.parentNode;
+      parentNode.removeChild(script);
+
+      const newScript = document.createElement('script');
+      newScript.setAttribute('src', this.updateCacheKey(script.src));
+      newScript.onload = () => this.#listeners[path] && this.#listeners[path]();
+      parentNode.appendChild(newScript);
+
       return true;
     }
 

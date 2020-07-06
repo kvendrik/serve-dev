@@ -11,7 +11,7 @@ import open from 'open';
 
 interface OnChangeResult {
   replaceModule?: string;
-  doReload?: boolean;
+  refreshPage?: boolean;
 };
 
 interface Settings {
@@ -26,7 +26,7 @@ interface Settings {
 }
 
 export default class DevServer {
-  private uniqueServerKey = Math.round(Math.random());
+  private uniqueServerKey = Math.random().toString(36).substring(2, 18);
   private getUniqueSocketId = createUniqueIdFactory('socket');
   private currentWebsockets: {
    id: string;
@@ -96,9 +96,9 @@ export default class DevServer {
       return;
     }
 
-    const {replaceModule, doReload} = await watch.onChange(filePath);
+    const {replaceModule, refreshPage} = await watch.onChange(filePath);
 
-    if (!replaceModule && !doReload) {
+    if (!replaceModule && !refreshPage) {
       return;
     }
 
@@ -108,7 +108,7 @@ export default class DevServer {
           action: 'fileChange',
           data: {
             replaceModule,
-            doReload,
+            refreshPage,
           },
         })
       );

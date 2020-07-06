@@ -7,13 +7,14 @@ const server = new DevServer({
   watch: {
     paths: ['src', 'public/index.html'],
     onChange(filePath) {
-      if (filePath.includes('.js')) {
+      if (filePath.includes('app.js')) {
         buildJs();
         return {replaceModule: 'app.js'};
-      } else {
+      } else if (filePath.includes('app.css')) {
         buildCss();
         return {replaceModule: 'app.css'};
       }
+      return {refreshPage: true};
     }
   },
   onStart() {
