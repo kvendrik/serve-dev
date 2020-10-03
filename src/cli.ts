@@ -65,6 +65,19 @@ ${chalk.bold.underline('OPTIONS')}
     _: [watch = "."], // Maybe watching multiple dirs?
   } = options;
 
+  if (!fs.existsSync(watch)) {
+    console.error(
+      `No such directory \`${watch}\`.`
+    );
+    process.exit(1);
+  } else if (!fs.statSync(watch).isDirectory()) {
+    console.error(
+      `\`${watch}\` is not a directory.`
+    );
+    process.exit(1);
+  }
+
+
   new DevServer({
     root: watch,
     port,
