@@ -1,5 +1,3 @@
-mv build/index.js build/index.mjs
-mv build/dev-server.js build/dev-server.mjs
-
-sed -i -e 's/.\/dev-server/.\/dev-server.mjs/' build/index.mjs
-rm build/index.mjs-e
+find build -name \*.js | sed 's/^\(.*\)\.js$/mv "\1.js" "\1.mjs"/' | sh
+sed -i -e 's/.\/dev-server/.\/dev-server.mjs/' build/*.mjs
+rm build/*.mjs-e
