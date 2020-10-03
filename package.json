@@ -3,6 +3,7 @@
   "version": "1.0.0-alpha.6",
   "description": "A very simple but highly customizable server for local web development",
   "main": "build/index.mjs",
+  "bin": "build/cli.mjs",
   "scripts": {
     "example": "yarn build && yarn example:setup && yarn example:start",
     "example:setup": "cd example && rm -rf node_modules && yarn",
@@ -11,6 +12,8 @@
   },
   "dependencies": {
     "chalk": "^4.1.0",
+    "colorette": "^1.2.1",
+    "getopts": "^2.2.5",
     "koa": "^2.13.0",
     "koa-router": "^9.1.0",
     "koa-send": "^5.0.0",
