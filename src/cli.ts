@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { bold, white, blackBright, cyan, magenta, underline } from "colorette";
+import chalk from 'chalk';
 import getopts from "getopts";
 import fs from "fs";
 import { dirname, resolve } from "path";
@@ -24,8 +24,8 @@ const options = getopts(process.argv.slice(2), {
   unknown: (opt) => {
     console.error(
       `Unknown or unexpected option \`${opt}\`.\n` +
-        blackBright(
-          `See \`${white(bold("serve-dev --help"))}\` for all options`
+        chalk.blackBright(
+          `See \`${chalk.white.bold("serve-dev --help")}\` for all options`
         )
     );
     process.exit(1);
@@ -36,22 +36,22 @@ if (options.help) {
   console.log(`
 serve-dev - Very simple reloading server for web development
 
-${bold(underline('USAGE'))}
+${chalk.bold.underline('USAGE')}
 
-  ${cyan('serve-dev')}
-  ${cyan('serve-dev')} --help
-  ${cyan('serve-dev')} --version
-  ${cyan('serve-dev')} public
-  ${cyan('serve-dev')} [-p port] [directory]
+  ${chalk.cyan('serve-dev')}
+  ${chalk.cyan('serve-dev')} --help
+  ${chalk.cyan('serve-dev')} --version
+  ${chalk.cyan('serve-dev')} public
+  ${chalk.cyan('serve-dev')} [-p port] [directory]
 
   By default serves and listens to changes for the
-  current working directory on ${bold('0.0.0.0:3000')}.
+  current working directory on ${chalk.bold('0.0.0.0:3000')}.
 
-${bold(underline('OPTIONS'))}
+${chalk.bold.underline('OPTIONS')}
 
-  ${magenta('-h') + ', ' + magenta('--help')}            Show this help 
-  ${magenta('-v') + ', ' + magenta('--version')}         Display the currently installed version of serve-dev 
-  ${magenta('-p') + ', ' + magenta(`--port ${underline('port')}`)}       Specify what port to serve on
+  ${chalk.magenta('-h') + ', ' + chalk.magenta('--help')}            Show this help 
+  ${chalk.magenta('-v') + ', ' + chalk.magenta('--version')}         Display the currently installed version of serve-dev 
+  ${chalk.magenta('-p') + ', ' + chalk.magenta(`--port ${chalk.underline('port')}`)}       Specify what port to serve on
 `.trim());
 } else if (options.version) {
   const { version } = JSON.parse(

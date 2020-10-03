@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "chalk": "^4.1.0",
-    "colorette": "^1.2.1",
     "getopts": "^2.2.5",
     "koa": "^2.13.0",
     "koa-router": "^9.1.0",
